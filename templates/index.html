@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Hub</title>
+    <meta name="description" content="A premium interactive dashboard for Google Cloud BigQuery Release Notes, featuring real-time search, granular filtering, bookmarking, and visual release statistics.">
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body class="dark-mode">
+    <div class="app-container">
+        <!-- Sidebar Navigation & Filters -->
+        <aside class="sidebar" id="app-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h1>BQ Hub</h1>
+                </div>
+                <p class="logo-subtitle">BigQuery Release Explorer</p>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Search Input -->
+                <div class="search-wrapper">
+                    <label for="search-input" class="sr-only">Search release notes</label>
+                    <div class="search-box">
+                        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="search-input" placeholder="Search update notes..." autocomplete="off">
+                        <button id="clear-search-btn" class="clear-btn" aria-label="Clear search" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="nav-menu" aria-label="Main Navigation">
+                    <button id="nav-all-btn" class="nav-item active">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <span>All Releases</span>
+                    </button>
+                    <button id="nav-bookmarks-btn" class="nav-item">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Bookmarks</span>
+                        <span id="bookmark-badge-count" class="pill-badge counter-badge" style="display: none;">0</span>
+                    </button>
+                    <button id="nav-stats-btn" class="nav-item">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        <span>Insights Dashboard</span>
+                    </button>
+                </nav>
+
+                <hr class="sidebar-divider">
+
+                <!-- Type Filters -->
+                <div class="filter-section">
+                    <h2 class="filter-title">Update Types</h2>
+                    <div id="type-filters-container" class="filter-list">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Year Filters -->
+                <div class="filter-section">
+                    <h2 class="filter-title">Filter by Year</h2>
+                    <div id="year-filters-container" class="filter-list">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Active Filter Clear Button -->
+                <button id="clear-all-filters-btn" class="secondary-btn w-full" style="display: none;">
+                    Reset All Filters
+                </button>
+            </div>
+            
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <div class="sync-status">
+                    <div class="status-indicator online" id="sync-indicator"></div>
+                    <span id="sync-text">Loading feed...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Panel -->
+        <main class="main-content">
+            <!-- Top Action Header -->
+            <header class="main-header">
+                <div class="header-info">
+                    <button id="mobile-toggle-btn" class="mobile-toggle" aria-label="Toggle sidebar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <div>
+                        <h2 id="view-title" class="page-title">All Release Notes</h2>
+                        <p id="view-subtitle" class="page-subtitle">Showing all available updates from the BigQuery documentation feed.</p>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <div class="sync-info-pill" id="cache-info-pill" style="display: none;">
+                        <span id="cache-time-text">Cached: --:--</span>
+                        <button id="force-refresh-btn" class="icon-action-btn" title="Fetch latest data from source feed">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Theme Toggle Switch -->
+                    <button id="theme-toggle-btn" class="theme-toggle" aria-label="Toggle dark/light theme">
+                        <span class="sun-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </span>
+                        <span class="moon-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        </span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="content-body" id="scrollable-content">
+                <!-- Search Result Info Bar -->
+                <div id="results-meta-bar" class="results-meta" style="display: none;">
+                    <span id="results-count-text">Found 0 matching release notes</span>
+                    <button id="reset-search-filters-btn" class="text-btn">Reset filters</button>
+                </div>
+
+                <!-- Feed View -->
+                <section id="feed-section" class="tab-content active-content">
+                    <div id="loading-skeletons" class="skeletons-container">
+                        <!-- Skeleton Cards -->
+                        <div class="skeleton-card">
+                            <div class="skeleton-line header-skeleton"></div>
+                            <div class="skeleton-line body-skeleton-1"></div>
+                            <div class="skeleton-line body-skeleton-2"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton-line header-skeleton"></div>
+                            <div class="skeleton-line body-skeleton-1"></div>
+                            <div class="skeleton-line body-skeleton-2"></div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton-line header-skeleton"></div>
+                            <div class="skeleton-line body-skeleton-1"></div>
+                            <div class="skeleton-line body-skeleton-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="release-notes-timeline" class="notes-timeline" style="display: none;">
+                        <!-- Cards will be populated here -->
+                    </div>
+
+                    <div id="empty-state" class="empty-state-container" style="display: none;">
+                        <div class="empty-state-icon">⚡</div>
+                        <h3 id="empty-title">No release notes found</h3>
+                        <p id="empty-message">Try adjusting your filters or search terms to find what you are looking for.</p>
+                        <button id="empty-reset-btn" class="primary-btn">Reset All Filters</button>
+                    </div>
+                </section>
+
+                <!-- Bookmarks View (Custom message if empty) -->
+                <section id="bookmarks-section" class="tab-content">
+                    <!-- Note: Shares the timeline but filtered, handles empty state differently -->
+                </section>
+
+                <!-- Stats Dashboard View -->
+                <section id="stats-section" class="tab-content stats-dashboard">
+                    <!-- Top Summary Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-title">Total Release Items</div>
+                            <div class="stat-card-value" id="stats-total-items">0</div>
+                            <div class="stat-card-desc">All historical parsed updates</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-title">Features Added</div>
+                            <div class="stat-card-value" id="stats-total-features" style="color: var(--color-feature);">0</div>
+                            <div class="stat-card-desc" id="stats-feature-pct">0% of total updates</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-title">Issues & Breaking</div>
+                            <div class="stat-card-value" id="stats-total-issues" style="color: var(--color-breaking);">0</div>
+                            <div class="stat-card-desc" id="stats-issues-pct">0% of total updates</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-title">Latest Update</div>
+                            <div class="stat-card-value text-lg" id="stats-latest-date">--</div>
+                            <div class="stat-card-desc" id="stats-days-ago">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Area -->
+                    <div class="charts-row">
+                        <!-- Chart 1: Update Types Distribution -->
+                        <div class="chart-card">
+                            <h3 class="chart-card-title">Distribution by Update Type</h3>
+                            <div class="chart-container-radial">
+                                <svg id="chart-distribution-svg" viewBox="0 0 200 200" width="100%" height="220">
+                                    <!-- Dynamic Donut Chart -->
+                                </svg>
+                                <div id="chart-distribution-legend" class="chart-legend-grid">
+                                    <!-- Filled by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Release Trends Over Time -->
+                        <div class="chart-card flex-2">
+                            <h3 class="chart-card-title">Release Velocity (Updates by Month)</h3>
+                            <div class="chart-container-bars">
+                                <svg id="chart-trends-svg" viewBox="0 0 500 220" width="100%" height="220" preserveAspectRatio="none">
+                                    <!-- Dynamic Bar Chart -->
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Details Grid -->
+                    <div class="insights-summary-card">
+                        <h3 class="chart-card-title">Key Feed Insights</h3>
+                        <ul class="insights-list" id="insights-bullets">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-notification" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <!-- Main JavaScript Logic -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
